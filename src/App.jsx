@@ -442,7 +442,7 @@ tr.paid-row td:first-child { box-shadow: inset 3px 0 0 var(--green); }
 /* Calendar */
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 2px;
 }
 .calendar-header-cell {
@@ -460,6 +460,7 @@ tr.paid-row td:first-child { box-shadow: inset 3px 0 0 var(--green); }
   border-radius: 6px;
   background: white;
   position: relative;
+  overflow: hidden;
 }
 .calendar-cell.other-month { background: #f9fafb; opacity: 0.5; }
 .calendar-cell.today { border-color: var(--accent); border-width: 2px; }
@@ -659,10 +660,13 @@ tr.paid-row td:first-child { box-shadow: inset 3px 0 0 var(--green); }
   .stat-label { font-size: 10px; }
   .stat-value { font-size: 22px; }
   .card { padding: 14px; margin-bottom: 12px; }
-  .calendar-cell { min-height: 54px; }
-  .calendar-event { font-size: 9px; padding: 1px 3px; }
-  .calendar-day-num { font-size: 11px; }
-  .calendar-header-cell { font-size: 10px; padding: 6px 2px; }
+  .calendar-cell { min-height: 50px; padding: 2px; }
+  .calendar-event { font-size: 8px; padding: 1px 2px; margin-bottom: 1px; }
+  .calendar-day-num { font-size: 10px; padding: 1px 2px; }
+  .calendar-header-cell { font-size: 9px; padding: 4px 1px; }
+  .calendar-grid { gap: 1px; }
+  .card:has(.calendar-grid) { padding: 10px; overflow-x: auto; }
+  .calendar-grid { min-width: 0; }
   .filter-bar { gap: 6px; }
   .filter-chip { padding: 5px 10px; font-size: 11px; }
   .search-box { min-width: unset; width: 100%; }
@@ -1004,7 +1008,7 @@ export default function App() {
   const [calYear, setCalYear] = useState(new Date().getFullYear());
 
   // Dashboard
-  const [dashMonth, setDashMonth] = useState(new Date().getMonth());
+  const [dashMonth, setDashMonth] = useState(new Date().getMonth() + 1);
   const [dashYear, setDashYear] = useState(new Date().getFullYear());
   const [compareMonth, setCompareMonth] = useState(-1);
   const [clientSort, setClientSort] = useState("none"); // "none" | "asc" | "desc"
