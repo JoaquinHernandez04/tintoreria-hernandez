@@ -619,15 +619,71 @@ tr.paid-row td:first-child { box-shadow: inset 3px 0 0 var(--green); }
   cursor: pointer;
 }
 
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
+}
+
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); }
+  .sidebar-overlay { display: block; }
+  .sidebar { 
+    transform: translateX(-100%); 
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+  }
   .sidebar.open { transform: translateX(0); }
   .mobile-toggle { display: block; }
-  .main { margin-left: 0; padding: 60px 16px 16px; }
+  .main { 
+    margin-left: 0; 
+    padding: 56px 14px 20px;
+    width: 100%;
+    overflow-x: hidden;
+  }
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .page-title { font-size: 20px; }
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .calendar-cell { min-height: 60px; }
-  .page-title { font-size: 22px; }
+  .stats-grid { 
+    grid-template-columns: 1fr 1fr; 
+    gap: 10px;
+  }
+  .stat-card { padding: 14px 12px; }
+  .stat-label { font-size: 10px; }
+  .stat-value { font-size: 22px; }
+  .card { padding: 14px; margin-bottom: 12px; }
+  .calendar-cell { min-height: 54px; }
+  .calendar-event { font-size: 9px; padding: 1px 3px; }
+  .calendar-day-num { font-size: 11px; }
+  .calendar-header-cell { font-size: 10px; padding: 6px 2px; }
+  .filter-bar { gap: 6px; }
+  .filter-chip { padding: 5px 10px; font-size: 11px; }
+  .search-box { min-width: unset; width: 100%; }
+  .table-wrap { margin: 0 -14px; }
+  table { font-size: 12px; }
+  th { padding: 8px 8px; font-size: 10px; }
+  td { padding: 8px 8px; }
+  .btn { padding: 8px 12px; font-size: 12px; }
+  .btn-sm { padding: 4px 8px; font-size: 11px; }
+  .modal { 
+    padding: 18px; 
+    margin: 10px;
+    max-height: 85vh;
+  }
+  .modal-title { font-size: 17px; }
+  .notif-banner { font-size: 12px; padding: 10px 12px; }
+  .chart-row { padding: 0; overflow-x: auto; }
+  .chart-bar { width: 20px; }
+  .chart-label { font-size: 8px; }
+  .compare-select { font-size: 12px; padding: 5px 8px; }
+  .flex.items-center.justify-between.mb-2 { flex-wrap: wrap; gap: 8px; }
 }
 
 /* Misc */
@@ -1147,6 +1203,9 @@ export default function App() {
       <div className="app">
         {/* Mobile toggle */}
         <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
+        
+        {/* Mobile overlay */}
+        {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
         {/* Sidebar */}
         <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
