@@ -1006,6 +1006,7 @@ export default function App() {
   const [jobSearch, setJobSearch] = useState("");
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [selectedDay, setSelectedDay] = useState(null); // date string like "2026-03-17"
 
   // Dashboard
   const [dashMonth, setDashMonth] = useState(new Date().getMonth() + 1);
@@ -1500,7 +1501,9 @@ export default function App() {
                       const isToday = dateStr === todayStr;
                       const dayJobs = jobs.filter(j => j.date === dateStr).sort((a, b) => (a.hour || "99:99").localeCompare(b.hour || "99:99"));
                       return (
-                        <div key={i} className={`calendar-cell ${isToday ? "today" : ""}`}>
+                        <div key={i} className={`calendar-cell ${isToday ? "today" : ""}`} 
+                          onClick={() => dayJobs.length > 0 && setSelectedDay(dateStr)}
+                          style={{ cursor: dayJobs.length > 0 ? "pointer" : "default" }}>
                           <div className="calendar-day-num">{cell.day}</div>
                           {dayJobs.slice(0, 3).map(j => (
                             <div key={j.id} className={`calendar-event ${j.status === "Confirmado" ? "confirmed" : j.status === "Pendiente de confirmación" ? "pending" : j.status === "Terminado" ? "done" : "other-status"}`}
@@ -1690,6 +1693,30 @@ export default function App() {
                   ))
                 )}
               </>
+            );
+          })()}
+        </Modal>
+
+        <Modal isOpen={selectedDay != null} onClose={() => setSelectedDay(null)} title={selectedDay ? `Turnos — ${selectedDay.split("-").reverse().join("/")}` : ""}>
+          {selectedDay && (() => {
+            const dayJobs = jobs.filter(j => j.date === selectedDay).sort((a, b) => (a.hour || "99:99").localeCompare(b.hour || "99:99"));
+            return dayJobs.length === 0 ? <div className="empty-state">Sin turnos este día</div> : (
+              dayJobs.map(j => (
+                <div key={j.id} className="client-history-item">
+                  <div className="flex items-center justify-between">
+                    <span style={{ fontWeight: 700, fontSize: 16 }}>{j.hour || "Sin hora"}</span>
+                    {statusBadge(j.status)}
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginTop: 6 }}>{j.clientName || "Sin nombre"}</div>
+                  <div className="text-sm text-muted" style={{ marginTop: 2 }}>{j.address || "Sin dirección"}</div>
+                  <div className="text-sm" style={{ marginTop: 4 }}>{j.serviceType}{j.serviceType === "Otros" && j.otherDetail ? ` (${j.otherDetail})` : ""}</div>
+                  {j.description && <div className="text-xs text-muted" style={{ marginTop: 2 }}>{j.description}</div>}
+                  <div className="flex items-center justify-between" style={{ marginTop: 6 }}>
+                    <span style={{ fontWeight: 700 }}>{formatMoney(j.value)}</span>
+                    <span>{j.paid ? <span className="badge badge-paid">{Icons.check} Pagado</span> : <span className="badge badge-unpaid">Pendiente</span>}</span>
+                  </div>
+                </div>
+              ))
             );
           })()}
         </Modal>
