@@ -1,0 +1,16 @@
+{
+  "name": "Tintorería Hernández",
+  "short_name": "TH Gestión",
+  "description": "Sistema de gestión - Tintorería Hernández",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f0eb",
+  "theme_color": "#1a2332",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
