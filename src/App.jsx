@@ -13,7 +13,8 @@ const SERVICE_TYPES = [
 
 const MODALITIES = ["Trae al local", "A domicilio", "Retiramos nosotros"];
 const PAYMENT_METHODS = ["Efectivo", "Transferencia"];
-const STATUSES = ["Pendiente de confirmación", "Confirmado", "Terminado", "Otro"];
+const STATUSES = ["Confirmado", "Pendiente de confirmación", "Otro"];
+const STATUS_ALL = ["Confirmado", "Pendiente de confirmación", "Terminado", "Otro"];
 const EXPENSE_CATEGORIES = [
   "Combustible", "Publicidad", "Insumos de limpieza", "Empleados",
   "Community Manager", "Mantenimiento vehículo", "Mantenimiento máquinas", "Otros"
@@ -696,8 +697,8 @@ function Modal({ isOpen, onClose, title, children }) {
 function JobForm({ job, clients, onSave, onCancel }) {
   const [form, setForm] = useState(job || {
     clientName: "", phone: "", address: "", serviceType: SERVICE_TYPES[0],
-    otherDetail: "", description: "", modality: MODALITIES[0], value: "",
-    paymentMethod: PAYMENT_METHODS[0], paid: false, date: new Date().toISOString().slice(0, 10),
+    otherDetail: "", description: "", modality: MODALITIES[1], value: "",
+    paymentMethod: PAYMENT_METHODS[1], paid: false, date: new Date().toISOString().slice(0, 10),
     hour: "", status: STATUSES[0], statusDetail: ""
   });
   const [saving, setSaving] = useState(false);
@@ -950,6 +951,7 @@ export default function App() {
   const [dashMonth, setDashMonth] = useState(new Date().getMonth());
   const [dashYear, setDashYear] = useState(new Date().getFullYear());
   const [compareMonth, setCompareMonth] = useState(-1);
+  const [clientSort, setClientSort] = useState("none"); // "none" | "asc" | "desc"
 
   // Load data from Supabase
   useEffect(() => {
@@ -973,10 +975,13 @@ export default function App() {
   // Ensure client exists
   const ensureClient = async (name, phone, address) => {
     if (!name) return;
-    const existing = clients.find(c => c.name.toLowerCase() === name.toLowerCase());
+    const existing = clients.find(c => 
+      c.name.toLowerCase() === name.toLowerCase() && 
+      (c.address || "").toLowerCase() === (address || "").toLowerCase()
+    );
     if (existing) {
-      const updated = { ...existing, phone: phone || existing.phone, address: address || existing.address };
-      await supabase.from("clients").update({ phone: updated.phone, address: updated.address }, existing.id);
+      const updated = { ...existing, phone: phone || existing.phone };
+      await supabase.from("clients").update({ phone: updated.phone }, existing.id);
       setClients(prev => prev.map(c => c.id === existing.id ? updated : c));
     } else {
       const newClient = { id: genId(), name, phone: phone || "", address: address || "" };
@@ -987,6 +992,8 @@ export default function App() {
 
   // Job CRUD
   const handleSaveJob = async (formData) => {
+    // Auto-set Terminado if paid
+    if (formData.paid) formData.status = "Terminado";
     await ensureClient(formData.clientName, formData.phone, formData.address);
     if (jobModal && jobModal.id) {
       const updated = { ...jobModal, ...formData };
@@ -1011,8 +1018,16 @@ export default function App() {
     const job = jobs.find(j => j.id === id);
     if (!job) return;
     const newPaid = !job.paid;
-    await supabase.from("jobs").update({ paid: newPaid }, id);
-    setJobs(prev => prev.map(j => j.id === id ? { ...j, paid: newPaid } : j));
+    const newStatus = newPaid ? "Terminado" : job.status === "Terminado" ? "Confirmado" : job.status;
+    await supabase.from("jobs").update({ paid: newPaid, status: newStatus }, id);
+    setJobs(prev => prev.map(j => j.id === id ? { ...j, paid: newPaid, status: newStatus } : j));
+  };
+
+  const deleteClient = async (id) => {
+    if (confirm("¿Eliminar este cliente? (los trabajos asociados NO se eliminan)")) {
+      await supabase.from("clients").delete(id);
+      setClients(prev => prev.filter(c => c.id !== id));
+    }
   };
 
   // Expense CRUD
@@ -1097,7 +1112,7 @@ export default function App() {
     let result = [...jobs];
     if (jobFilter === "unpaid") result = result.filter(j => !j.paid);
     else if (jobFilter === "paid") result = result.filter(j => j.paid);
-    else if (STATUSES.includes(jobFilter)) result = result.filter(j => j.status === jobFilter);
+    else if (STATUS_ALL.includes(jobFilter)) result = result.filter(j => j.status === jobFilter);
     if (jobSearch) {
       const s = jobSearch.toLowerCase();
       result = result.filter(j => j.clientName?.toLowerCase().includes(s) || j.serviceType?.toLowerCase().includes(s) || j.description?.toLowerCase().includes(s));
@@ -1306,7 +1321,7 @@ export default function App() {
                   {Icons.search}
                   <input placeholder="Buscar cliente, servicio..." value={jobSearch} onChange={e => setJobSearch(e.target.value)} />
                 </div>
-                {["all", ...STATUSES, "unpaid", "paid"].map(f => (
+                {["all", ...STATUS_ALL, "unpaid", "paid"].map(f => (
                   <button key={f} className={`filter-chip ${jobFilter === f ? "active" : ""}`} onClick={() => setJobFilter(f)}>
                     {f === "all" ? "Todos" : f === "unpaid" ? "Sin cobrar" : f === "paid" ? "Cobrados" : f}
                   </button>
@@ -1451,30 +1466,42 @@ export default function App() {
                   {Icons.search}
                   <input placeholder="Buscar cliente..." value={jobSearch} onChange={e => setJobSearch(e.target.value)} />
                 </div>
+                <button className={`filter-chip ${clientSort === "desc" ? "active" : ""}`} onClick={() => setClientSort(clientSort === "desc" ? "none" : "desc")}>Mayor a menor</button>
+                <button className={`filter-chip ${clientSort === "asc" ? "active" : ""}`} onClick={() => setClientSort(clientSort === "asc" ? "none" : "asc")}>Menor a mayor</button>
               </div>
               <div className="card" style={{ padding: 0, overflow: "hidden" }}>
                 <div className="table-wrap">
                   <table>
                     <thead>
-                      <tr><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th>Trabajos</th><th>Total facturado</th><th></th></tr>
+                      <tr><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th>Trabajos</th><th style={{ cursor: "pointer" }} onClick={() => setClientSort(clientSort === "desc" ? "asc" : "desc")}>Total facturado {clientSort === "desc" ? "↓" : clientSort === "asc" ? "↑" : "↕"}</th><th></th></tr>
                     </thead>
                     <tbody>
                       {clients.filter(c => !jobSearch || c.name?.toLowerCase().includes(jobSearch.toLowerCase())).map(c => {
-                        const clientJobs = jobs.filter(j => j.clientName?.toLowerCase() === c.name?.toLowerCase());
+                        const clientJobs = jobs.filter(j => 
+                          j.clientName?.toLowerCase() === c.name?.toLowerCase() && 
+                          (j.address || "").toLowerCase() === (c.address || "").toLowerCase()
+                        );
                         const totalBilled = clientJobs.reduce((s, j) => s + (j.value || 0), 0);
-                        return (
+                        return { ...c, clientJobs, totalBilled };
+                      }).sort((a, b) => {
+                        if (clientSort === "asc") return a.totalBilled - b.totalBilled;
+                        if (clientSort === "desc") return b.totalBilled - a.totalBilled;
+                        return 0;
+                      }).map(c => (
                           <tr key={c.id}>
                             <td style={{ fontWeight: 600 }}>{c.name}</td>
                             <td className="text-sm">{c.phone || "—"}</td>
                             <td className="text-sm text-muted">{c.address || "—"}</td>
-                            <td>{clientJobs.length}</td>
-                            <td style={{ fontWeight: 700 }}>{formatMoney(totalBilled)}</td>
+                            <td>{c.clientJobs.length}</td>
+                            <td style={{ fontWeight: 700 }}>{formatMoney(c.totalBilled)}</td>
                             <td>
-                              <button className="btn btn-secondary btn-sm" onClick={() => setClientModal(c)}>Ver historial</button>
+                              <div className="flex gap-2">
+                                <button className="btn btn-secondary btn-sm" onClick={() => setClientModal(c)}>Ver historial</button>
+                                <button className="btn-icon" onClick={() => deleteClient(c.id)} title="Eliminar cliente">{Icons.trash}</button>
+                              </div>
                             </td>
                           </tr>
-                        );
-                      })}
+                      ))}
                       {clients.length === 0 && <tr><td colSpan={6} className="empty-state">Los clientes se crean automáticamente al cargar trabajos</td></tr>}
                     </tbody>
                   </table>
@@ -1578,7 +1605,10 @@ export default function App() {
 
         <Modal isOpen={clientModal != null} onClose={() => setClientModal(null)} title={`Historial — ${clientModal?.name || ""}`}>
           {clientModal && (() => {
-            const clientJobs = jobs.filter(j => j.clientName?.toLowerCase() === clientModal.name?.toLowerCase()).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+            const clientJobs = jobs.filter(j => 
+              j.clientName?.toLowerCase() === clientModal.name?.toLowerCase() && 
+              (j.address || "").toLowerCase() === (clientModal.address || "").toLowerCase()
+            ).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
             return (
               <>
                 <div className="text-sm text-muted mb-2">Tel: {clientModal.phone || "—"} · Dir: {clientModal.address || "—"}</div>
