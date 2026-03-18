@@ -469,7 +469,7 @@ tr.paid-row td:first-child { box-shadow: inset 3px 0 0 var(--green); }
   font-weight: 600;
   white-space: nowrap;
 }
-.badge-pending { background: var(--yellow-light); color: var(--yellow); }
+.badge-pending { background: rgba(250,204,21,0.15); color: #facc15; }
 .badge-confirmed { background: var(--accent-light); color: var(--accent); }
 .badge-done { background: var(--green-light); color: var(--green); }
 .badge-other { background: var(--purple-light); color: var(--purple); }
@@ -522,7 +522,8 @@ tr.paid-row td:first-child { box-shadow: inset 3px 0 0 var(--green); }
   font-weight: 500;
 }
 .calendar-event.confirmed { background: var(--accent-light); color: var(--accent); }
-.calendar-event.pending { background: var(--yellow-light); color: var(--yellow); }
+.calendar-event.pending { background: rgba(250,204,21,0.15); color: #facc15; }
+.calendar-event.retiro { background: rgba(96,165,250,0.15); color: #60a5fa; }
 .calendar-event.done { background: var(--green-light); color: var(--green); }
 .calendar-event.other-status { background: var(--purple-light); color: var(--purple); }
 
@@ -1063,6 +1064,7 @@ export default function App() {
   // Filters
   const [jobFilter, setJobFilter] = useState("all");
   const [jobSearch, setJobSearch] = useState("");
+  const [jobMonthFilter, setJobMonthFilter] = useState("all"); // "all" or "2026-3" etc
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [selectedDay, setSelectedDay] = useState(null); // date string like "2026-03-17"
@@ -1233,12 +1235,19 @@ export default function App() {
     if (jobFilter === "unpaid") result = result.filter(j => !j.paid);
     else if (jobFilter === "paid") result = result.filter(j => j.paid);
     else if (STATUS_ALL.includes(jobFilter)) result = result.filter(j => j.status === jobFilter);
+    if (jobMonthFilter !== "all") {
+      const [fy, fm] = jobMonthFilter.split("-").map(Number);
+      result = result.filter(j => {
+        const my = getMonthYear(j.date);
+        return my && my.month === fm && my.year === fy;
+      });
+    }
     if (jobSearch) {
       const s = jobSearch.toLowerCase();
       result = result.filter(j => j.clientName?.toLowerCase().includes(s) || j.serviceType?.toLowerCase().includes(s) || j.description?.toLowerCase().includes(s));
     }
-    return result.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  }, [jobs, jobFilter, jobSearch]);
+    return result.reverse();
+  }, [jobs, jobFilter, jobSearch, jobMonthFilter]);
 
   const filteredUnpaidTotal = useMemo(() => {
     if (jobFilter === "unpaid") return filteredJobs.reduce((sum, j) => sum + (j.value || 0), 0);
@@ -1444,6 +1453,12 @@ export default function App() {
                   {Icons.search}
                   <input placeholder="Buscar cliente, servicio..." value={jobSearch} onChange={e => setJobSearch(e.target.value)} />
                 </div>
+                <select className="compare-select" value={jobMonthFilter} onChange={e => setJobMonthFilter(e.target.value)}>
+                  <option value="all">Todos los meses</option>
+                  {[2025, 2026, 2027].map(y => MONTHS.map((m, i) => (
+                    <option key={`${y}-${i + 1}`} value={`${y}-${i + 1}`}>{m} {y}</option>
+                  )))}
+                </select>
                 {["all", ...STATUS_ALL, "unpaid", "paid"].map(f => (
                   <button key={f} className={`filter-chip ${jobFilter === f ? "active" : ""}`} onClick={() => setJobFilter(f)}>
                     {f === "all" ? "Todos" : f === "unpaid" ? "Sin cobrar" : f === "paid" ? "Cobrados" : f}
@@ -1545,9 +1560,10 @@ export default function App() {
                   </div>
 
                   <div className="flex gap-2 mb-2" style={{ fontSize: 11, fontWeight: 600 }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "#dbeafe" }} /> Confirmado</span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "#fef3c7" }} /> Pendiente</span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "#d1fae5" }} /> Terminado</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "rgba(255,163,51,0.4)" }} /> Confirmado</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "rgba(250,204,21,0.4)" }} /> Pendiente</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "rgba(52,211,153,0.4)" }} /> Terminado</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "rgba(96,165,250,0.4)" }} /> Retiro</span>
                   </div>
 
                   <div className="calendar-grid">
@@ -1565,7 +1581,7 @@ export default function App() {
                           style={{ cursor: dayJobs.length > 0 ? "pointer" : "default" }}>
                           <div className="calendar-day-num">{cell.day}</div>
                           {dayJobs.slice(0, 3).map(j => (
-                            <div key={j.id} className={`calendar-event ${j.status === "Confirmado" ? "confirmed" : j.status === "Pendiente de confirmación" ? "pending" : j.status === "Terminado" ? "done" : "other-status"}`}
+                            <div key={j.id} className={`calendar-event ${j.modality === "Retiramos nosotros" ? "retiro" : j.status === "Confirmado" ? "confirmed" : j.status === "Pendiente de confirmación" ? "pending" : j.status === "Terminado" ? "done" : "other-status"}`}
                               title={`${j.clientName} - ${j.serviceType} - ${formatMoney(j.value)}`}>
                               {j.hour || "s/h"} · {j.address || j.clientName}
                             </div>
