@@ -1246,7 +1246,11 @@ export default function App() {
       const s = jobSearch.toLowerCase();
       result = result.filter(j => j.clientName?.toLowerCase().includes(s) || j.serviceType?.toLowerCase().includes(s) || j.description?.toLowerCase().includes(s));
     }
-    return result.reverse();
+    return result.sort((a, b) => {
+      const dateCompare = (b.date || "").localeCompare(a.date || "");
+      if (dateCompare !== 0) return dateCompare;
+      return (a.id || "").localeCompare(b.id || "");
+    });
   }, [jobs, jobFilter, jobSearch, jobMonthFilter]);
 
   const filteredUnpaidTotal = useMemo(() => {
